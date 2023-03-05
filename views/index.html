@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Radio | 24 / 7 Radio</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=VT323&display=swap" rel="stylesheet">
+  <style>
+    * {
+      font-family: "VT323", monospace;
+    }
+
+    html,
+    body {
+      width: 100%;
+      height: 100%;
+      box-sizing: border-box;
+      padding: 0;
+      margin: 0;
+    }
+
+    #root {
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+    }
+
+    select,
+    button {
+      padding: 0.5rem;
+      font-size: 1rem;
+      margin: 0.25rem;
+    }
+  </style>
+</head>
+
+<body>
+  <audio preload="none"></audio>
+
+  <div id="root">
+    <h1>24 / 7 Radio</h1>
+    <select name="playlist" id="playlist">
+      {{ range $key, $element := . }}
+      <option value="{{ $element.Name }}">{{ $element.Name }}</option>
+      {{ end }}
+    </select>
+    <button>Connect</button>
+  </div>
+
+  <script>
+    var audio = document.querySelector("audio")
+    var connect = document.querySelector("button")
+
+    var current = null;
+    var playlist = document.querySelector("#playlist");
+
+    connect.onclick = function () {
+      current = playlist.value
+      connect.textContent = "Connecting ..."
+      connect.disabled = true
+
+      audio.setAttribute("src", `/stream/${current}?` + "cache-buster=" + Date.now())
+      audio.play().then(() => {
+        connect.textContent = "Connect"
+        connect.style.display = "none"
+        connect.disabled = false
+      }).catch(console.error)
+    }
+
+    playlist.addEventListener("change", function () {
+      if (current === playlist.value) {
+        connect.style.display = "none"
+        return
+      }
+      connect.style.display = "block"
+    })
+  </script>
+</body>
+
+</html>
