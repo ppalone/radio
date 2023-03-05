@@ -43,6 +43,8 @@
   </head>
 
   <body>
+    <audio preload="none"></audio>
+
     <div id="root">
       <h1>24 / 7 Radio</h1>
       <select name="playlist" id="playlist">
@@ -53,16 +55,10 @@
       <button>Connect</button>
     </div>
 
-    <script
-      src="https://cdnjs.cloudflare.com/ajax/libs/howler/2.2.3/howler.min.js"
-      integrity="sha512-6+YN/9o9BWrk6wSfGxQGpt3EUK6XeHi6yeHV+TYD2GR0Sj/cggRpXr1BrAQf0as6XslxomMUxXp2vIl+fv0QRA=="
-      crossorigin="anonymous"
-      referrerpolicy="no-referrer"
-    ></script>
     <script>
       var connect = document.querySelector("button");
+      var audio = document.querySelector("audio");
 
-      var audio = null;
       var current = null;
       var playlist = document.querySelector("#playlist");
 
@@ -71,20 +67,18 @@
         connect.textContent = "Connecting ...";
         connect.disabled = true;
 
-        if (audio) {
-          audio.unload();
-        }
-
-        audio = new Howl({
-          src: [`/stream/${current}?` + "cache-buster=" + Date.now()],
-          html5: true,
-          format: "mp3",
-        });
-
-        audio.play();
-        connect.textContent = "Connect";
-        connect.style.display = "none";
-        connect.disabled = false;
+        audio.setAttribute(
+          "src",
+          `/stream/${current}?` + "cache-buster=" + Date.now()
+        );
+        audio
+          .play()
+          .then(() => {
+            connect.textContent = "Connect";
+            connect.style.display = "none";
+            connect.disabled = false;
+          })
+          .catch(console.error);
       };
 
       playlist.addEventListener("change", function () {
