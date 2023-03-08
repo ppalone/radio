@@ -16,6 +16,7 @@ import (
 	"github.com/ppalone/radio/pkg/encoder"
 	"github.com/ppalone/radio/pkg/radio"
 	"github.com/ppalone/radio/pkg/saavn"
+	"github.com/ppalone/radio/pkg/safebuffer"
 )
 
 const (
@@ -29,12 +30,12 @@ type Mixer struct {
 	sc          *saavn.Saavn
 	tracks      []saavn.Song
 	current     int
-	buffer      *bytes.Buffer
-	silence     *bytes.Buffer
-	mutex       *sync.RWMutex
+	buffer      *safebuffer.Buffer
+	silence     *safebuffer.Buffer
 	r           *radio.Radio
 	logger      *log.Logger
 	loading     bool
+	mutex       *sync.Mutex
 }
 
 func New(r *radio.Radio, prefix string, playlistURL string) *Mixer {
@@ -44,12 +45,12 @@ func New(r *radio.Radio, prefix string, playlistURL string) *Mixer {
 		sc:          &saavn.Saavn{},
 		tracks:      []saavn.Song{},
 		current:     0,
-		buffer:      &bytes.Buffer{},
-		silence:     &bytes.Buffer{},
-		mutex:       &sync.RWMutex{},
+		buffer:      safebuffer.New(),
+		silence:     safebuffer.New(),
 		r:           r,
 		logger:      logger,
 		loading:     false,
+		mutex:       &sync.Mutex{},
 	}
 }
 
@@ -92,12 +93,6 @@ func (m *Mixer) Load() error {
 
 func (m *Mixer) Stream() error {
 
-	defer func() {
-		if r := recover(); r != nil {
-			m.logger.Println("Recovered from panic :(")
-		}
-	}()
-
 	song := m.tracks[m.current]
 	downloadURL, err := m.sc.GetSongDownloadURL(song)
 	if err != nil {
@@ -119,8 +114,6 @@ func (m *Mixer) Stream() error {
 		return err
 	}
 
-	m.mutex.Lock()
-	defer m.mutex.Unlock()
 	_, err = m.buffer.Write(encoded)
 
 	if err != nil {
@@ -148,9 +141,7 @@ func (m *Mixer) Start(done <-chan bool) {
 			t.Stop()
 		case <-t.C:
 
-			m.mutex.Lock()
 			_, err := m.buffer.Read(buff)
-			m.mutex.Unlock()
 
 			if err != nil && err != io.EOF {
 				m.logger.Println("Error while reading from buffer: ", err)
