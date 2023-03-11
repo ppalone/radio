@@ -9,32 +9,32 @@ import (
 	"math/rand"
 	"net/http"
 	"os"
-	"path/filepath"
 	"sync"
 	"time"
 
 	"github.com/ppalone/radio/pkg/encoder"
 	"github.com/ppalone/radio/pkg/radio"
 	"github.com/ppalone/radio/pkg/saavn"
+	"github.com/ppalone/radio/pkg/safebuffer"
+	"github.com/ppalone/radio/pkg/silence"
 )
 
 const (
 	BITRATE = 16000
 )
 
-var SILENCE_SAMPLE *bytes.Buffer = &bytes.Buffer{}
-
 type Mixer struct {
 	playlistURL string
 	sc          *saavn.Saavn
 	tracks      []saavn.Song
 	current     int
-	buffer      *bytes.Buffer
+	buffer      *safebuffer.Buffer
 	silence     *bytes.Buffer
-	mutex       *sync.RWMutex
+	mutex       *sync.Mutex
 	r           *radio.Radio
 	logger      *log.Logger
 	loading     bool
+	sample      *bytes.Buffer
 }
 
 func New(r *radio.Radio, prefix string, playlistURL string) *Mixer {
@@ -44,24 +44,26 @@ func New(r *radio.Radio, prefix string, playlistURL string) *Mixer {
 		sc:          &saavn.Saavn{},
 		tracks:      []saavn.Song{},
 		current:     0,
-		buffer:      &bytes.Buffer{},
+		buffer:      safebuffer.New(),
 		silence:     &bytes.Buffer{},
-		mutex:       &sync.RWMutex{},
+		mutex:       &sync.Mutex{},
 		r:           r,
 		logger:      logger,
 		loading:     false,
+		sample:      &bytes.Buffer{},
 	}
 }
 
 func (m *Mixer) Load() error {
 
-	audio, err := os.ReadFile(filepath.Join("audio", "SILENCE.mp3"))
+	// Generate 16 seconds of silence stream
+	audio, err := silence.Generate(16)
 	if err != nil {
 		return err
 	}
 
-	SILENCE_SAMPLE = bytes.NewBuffer(audio)
-	_, err = m.silence.Write(SILENCE_SAMPLE.Bytes())
+	m.sample = bytes.NewBuffer(audio)
+	_, err = m.silence.Write(m.sample.Bytes())
 	if err != nil {
 		return err
 	}
@@ -119,8 +121,6 @@ func (m *Mixer) Stream() error {
 		return err
 	}
 
-	m.mutex.Lock()
-	defer m.mutex.Unlock()
 	_, err = m.buffer.Write(encoded)
 
 	if err != nil {
@@ -148,9 +148,7 @@ func (m *Mixer) Start(done <-chan bool) {
 			t.Stop()
 		case <-t.C:
 
-			m.mutex.Lock()
 			_, err := m.buffer.Read(buff)
-			m.mutex.Unlock()
 
 			if err != nil && err != io.EOF {
 				m.logger.Println("Error while reading from buffer: ", err)
@@ -186,7 +184,7 @@ func (m *Mixer) Start(done <-chan bool) {
 				for {
 					_, err := m.silence.Read(buff)
 					if err != nil && err == io.EOF {
-						m.silence.Write(SILENCE_SAMPLE.Bytes())
+						m.silence.Write(m.sample.Bytes())
 						continue
 					}
 					break
