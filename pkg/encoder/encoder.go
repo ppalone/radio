@@ -16,6 +16,7 @@ func EncodeToMP3(input []byte) ([]byte, error) {
 		"-b:a", "128k",
 		"-f", "mp3",
 		"-vn",
+		"-id3v2_version", "0",
 		"-c:a", "libmp3lame",
 		"-vsync", "2",
 		"pipe:1",

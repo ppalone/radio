@@ -17,6 +17,7 @@ func Generate(n int) ([]byte, error) {
 		"-t", strconv.Itoa(n),
 		"-map_metadata", "-1",
 		"-c:a", "libmp3lame",
+		"-id3v2_version", "0",
 		"-b:a", "128k",
 		"-f", "mp3",
 		"-",
