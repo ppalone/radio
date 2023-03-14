@@ -18,6 +18,7 @@ func Generate(n int) ([]byte, error) {
 		"-map_metadata", "-1",
 		"-c:a", "libmp3lame",
 		"-id3v2_version", "0",
+		"-write_xing", "0",
 		"-b:a", "128k",
 		"-f", "mp3",
 		"-",
