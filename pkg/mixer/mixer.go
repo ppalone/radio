@@ -2,6 +2,7 @@ package mixer
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -30,11 +31,12 @@ type Mixer struct {
 	current     int
 	buffer      *safebuffer.Buffer
 	silence     *bytes.Buffer
-	mutex       *sync.Mutex
+	mutex       *sync.RWMutex
 	r           *radio.Radio
 	logger      *log.Logger
 	loading     bool
 	sample      *bytes.Buffer
+	ctx         context.Context
 }
 
 func New(r *radio.Radio, prefix string, playlistURL string) *Mixer {
@@ -46,11 +48,12 @@ func New(r *radio.Radio, prefix string, playlistURL string) *Mixer {
 		current:     0,
 		buffer:      safebuffer.New(),
 		silence:     &bytes.Buffer{},
-		mutex:       &sync.Mutex{},
+		mutex:       &sync.RWMutex{},
 		r:           r,
 		logger:      logger,
 		loading:     false,
 		sample:      &bytes.Buffer{},
+		ctx:         context.Background(),
 	}
 }
 
@@ -106,7 +109,15 @@ func (m *Mixer) Stream() error {
 		return err
 	}
 
-	resp, err := http.Get(downloadURL)
+	c, cancel := context.WithTimeout(m.ctx, time.Second*10)
+	defer cancel()
+
+	req, err := http.NewRequestWithContext(c, http.MethodGet, downloadURL, nil)
+	if err != nil {
+		return nil
+	}
+
+	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
 		return err
 	}
@@ -159,9 +170,9 @@ func (m *Mixer) Start(done <-chan bool) {
 			if err != nil && err == io.EOF {
 				if !m.loading {
 
-					m.mutex.Lock()
+					m.mutex.RLock()
 					m.loading = true
-					m.mutex.Unlock()
+					m.mutex.RUnlock()
 
 					go func(m *Mixer) {
 						for {
@@ -172,9 +183,9 @@ func (m *Mixer) Start(done <-chan bool) {
 								continue
 							}
 
-							m.mutex.Lock()
+							m.mutex.RLock()
 							m.loading = false
-							m.mutex.Unlock()
+							m.mutex.RUnlock()
 
 							break
 						}

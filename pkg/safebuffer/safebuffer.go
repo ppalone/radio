@@ -18,13 +18,13 @@ func New() *Buffer {
 }
 
 func (buff *Buffer) Read(p []byte) (int, error) {
-	buff.m.Lock()
-	defer buff.m.Unlock()
+	buff.m.RLock()
+	defer buff.m.RUnlock()
 	return buff.b.Read(p)
 }
 
 func (buff *Buffer) Write(p []byte) (int, error) {
-	buff.m.Lock()
-	defer buff.m.Unlock()
+	buff.m.RLock()
+	defer buff.m.RUnlock()
 	return buff.b.Write(p)
 }
