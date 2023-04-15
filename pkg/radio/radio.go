@@ -57,12 +57,7 @@ func (r *Radio) remove(l *listener.Listener) {
 
 func (r *Radio) broadcast(chunks []byte) {
 	for l := range r.listeners {
-		select {
-		case l.Chunks <- chunks:
-		default:
-			delete(r.listeners, l)
-			close(l.Chunks)
-		}
+		l.Chunks <- chunks
 	}
 }
 
