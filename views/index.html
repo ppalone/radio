@@ -8,10 +8,10 @@
   <title>Radio | 24 / 7 Radio</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=VT323&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Comic+Neue&display=swap" rel="stylesheet">
   <style>
     * {
-      font-family: "VT323", monospace;
+      font-family: 'Comic Neue', sans-serif;
     }
 
     html,
@@ -21,6 +21,7 @@
       box-sizing: border-box;
       padding: 0;
       margin: 0;
+      color: white;
     }
 
     #root {
@@ -31,28 +32,94 @@
       align-items: center;
     }
 
+    .spacer, .main {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
     select,
     button {
       padding: 0.5rem;
       font-size: 1rem;
       margin: 0.25rem;
     }
+
+    #canvas {
+      position: fixed;
+      top: 0;
+      left: 0;
+      display: block;
+      z-index: -10;
+    }
   </style>
 </head>
 
 <body>
   <audio preload="none"></audio>
+  <canvas id="canvas"></canvas>
 
   <div id="root">
-    <h1>24 / 7 Radio</h1>
-    <select name="playlist" id="playlist">
-      {{ range $key, $element := . }}
-      <option value="{{ $element.Name }}">{{ $element.Name }}</option>
-      {{ end }}
-    </select>
-    <button>Connect</button>
+    <div class="spacer"></div>
+    <div class="main">
+      <h1>24 / 7 Radio</h1>
+      <select name="playlist" id="playlist">
+        {{ range $key, $element := . }}
+        <option value="{{ $element.Name }}">{{ $element.Name }}</option>
+        {{ end }}
+      </select>
+      <button>Connect</button>
+    </div>
   </div>
 
+  <script>
+
+    // vertical gap between blocks
+    var GAP = (window.innerWidth > 800) ? 4 : 2
+
+    // assuming
+    var MAX_FREQ = 256
+    class Rectangle {
+      constructor(x, y, w, h) {
+        this.x = x;
+        this.y = y;
+        this.w = w;
+        this.h = h;
+      }
+      update(ctx, h) {
+        this.h = h
+        this.draw(ctx)
+      }
+      draw(ctx) {
+        for (var i = 0; i < (Math.abs(this.h)); i += 10) {
+          ctx.strokeStyle = "transparent"
+
+          // var opacity = (Math.abs(this.h) - i) / (Math.abs(this.h))
+          var opacity = (MAX_FREQ - i) / (MAX_FREQ)
+          // dirty hack
+          if (i >= 180) {
+            ctx.fillStyle = `rgba(240, 50, 0, ${opacity})`
+          } else if (i >= 120) {
+            ctx.fillStyle = `rgba(250, 230, 0, ${opacity})`
+          } else {
+            ctx.fillStyle = `rgba(150, 252, 0, ${opacity})`
+          }
+          
+          ctx.beginPath()
+          ctx.roundRect(
+            this.x,
+            this.y - (i + GAP * (i / 10)), // i -> 0, 10, 20 ...
+            this.w,
+            -1 * 10,
+            GAP,
+          )
+          ctx.stroke()
+          ctx.fill()
+        }
+      }
+    }
+  </script>
   <script>
     var connect = document.querySelector("button");
     var audio = document.querySelector("audio");
@@ -96,6 +163,81 @@
       audio.setAttribute("src", `/stream/${current}?` + "cache-buster=" + Date.now())
       audio.play().catch(console.error)
     }
+  </script>
+  <script>
+    var canvas = document.querySelector("#canvas")
+    var ctx = canvas.getContext("2d")
+
+    var MAX_WIDTH = window.innerWidth
+    var MAX_HEIGHT = window.innerHeight
+    var interval = null
+    
+    
+    canvas.width = MAX_WIDTH
+    canvas.height = MAX_HEIGHT
+
+    // ctx.fillStyle = "rgba(10, 10, 10, 0.9)";
+    ctx.fillRect(0, 0, MAX_WIDTH, MAX_HEIGHT)
+
+    var NUMBER_OF_BARS = 0;
+
+    if (MAX_WIDTH >= 1000) {
+      NUMBER_OF_BARS = 64
+    } else if (MAX_WIDTH >= 600) {
+      NUMBER_OF_BARS = 32
+    } else {
+      NUMBER_OF_BARS = 16
+    }
+
+    var GAP_WIDTH = (MAX_WIDTH > 800) ? 4 : 2
+    var SAFE_WIDTH = 10
+    var BAR_WIDTH = Math.floor((MAX_WIDTH - (2 * SAFE_WIDTH) - (GAP_WIDTH * (NUMBER_OF_BARS - 1))) / (NUMBER_OF_BARS))
+
+    var rectangles = []
+    for (var i = 0; i < NUMBER_OF_BARS; i++) {
+      var rect = new Rectangle(
+        i * (BAR_WIDTH + GAP_WIDTH) + SAFE_WIDTH,
+        Math.floor(MAX_HEIGHT / 2),
+        BAR_WIDTH,
+        -1
+      );
+      rectangles.push(rect)
+    }
+    const context = new AudioContext();
+    const source = context.createMediaElementSource(audio)
+    const analyser = context.createAnalyser()
+    source.connect(analyser)
+    analyser.connect(context.destination)
+    var data;
+
+    rectangles.forEach(rect => {
+      rect.draw(ctx)
+    })
+
+    const animate = () => {
+      ctx.fillStyle = "black"
+      ctx.fillRect(0, 0, MAX_WIDTH, MAX_HEIGHT)
+
+      analyser.getByteFrequencyData(data)
+      data.forEach((d, idx) => {
+        rectangles[idx].update(ctx, -1 * (d + 1))
+      })
+      interval = requestAnimationFrame(animate)
+    }
+
+    audio.addEventListener("play", () => {
+      if (interval) {
+        cancelAnimationFrame(interval)
+      }
+
+      analyser.fftSize = NUMBER_OF_BARS * 2
+      const n = analyser.frequencyBinCount
+      data = new Uint8Array(n)
+
+      interval = requestAnimationFrame(animate)
+    })
+ 
+    // rect.draw(ctx)
   </script>
 </body>
 
