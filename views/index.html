@@ -203,12 +203,8 @@
       );
       rectangles.push(rect)
     }
-    const context = new AudioContext();
-    const source = context.createMediaElementSource(audio)
-    const analyser = context.createAnalyser()
-    source.connect(analyser)
-    analyser.connect(context.destination)
-    var data;
+
+    var context, source, analyser, data
 
     rectangles.forEach(rect => {
       rect.draw(ctx)
@@ -228,6 +224,14 @@
     audio.addEventListener("play", () => {
       if (interval) {
         cancelAnimationFrame(interval)
+      }
+      
+      if (!context) {
+        context = new AudioContext();
+        source = context.createMediaElementSource(audio)
+        analyser = context.createAnalyser()
+        source.connect(analyser)
+        analyser.connect(context.destination)
       }
 
       analyser.fftSize = NUMBER_OF_BARS * 2

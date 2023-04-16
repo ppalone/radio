@@ -15,7 +15,10 @@ type Radio struct {
 	Remove    chan *listener.Listener
 	Broadcast chan []byte
 	logger    *log.Logger
+	bad       map[*listener.Listener]int
 }
+
+var MAX_BAD int = 10
 
 // Returns a new Radio
 func New(prefix string) *Radio {
@@ -57,7 +60,24 @@ func (r *Radio) remove(l *listener.Listener) {
 
 func (r *Radio) broadcast(chunks []byte) {
 	for l := range r.listeners {
-		l.Chunks <- chunks
+		select {
+		case l.Chunks <- chunks:
+		default:
+			r.logger.Println("Found bad consumer")
+			v, ok := r.bad[l]
+			if !ok {
+				r.bad[l] = 1
+			} else {
+				r.bad[l] = v + 1
+			}
+
+			if v, ok := r.bad[l]; ok {
+				if v > MAX_BAD {
+					r.remove(l)
+					close(l.Chunks)
+				}
+			}
+		}
 	}
 }
 
