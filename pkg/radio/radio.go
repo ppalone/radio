@@ -29,6 +29,7 @@ func New(prefix string) *Radio {
 		Remove:    make(chan *listener.Listener),
 		Broadcast: make(chan []byte),
 		logger:    logger,
+		bad:       make(map[*listener.Listener]int),
 	}
 }
 
