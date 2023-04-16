@@ -1,18 +1,22 @@
 [
   {
     "name": "pop",
+    "display": "Pop 🎤",
     "url": "kGKp9Qe5gg2MQv7FkH9rjg__"
   },
   {
     "name": "electro-pop",
+    "display": "Electro ⚡",
     "url": "xQMFe0MEhiR613W6L-cCSw__"
   },
   {
     "name": "r&b",
+    "display": "R&B 🎸",
     "url": "35B,QrUb0axLBU7Q54OWwg__"
   },
   {
     "name": "hindi",
+    "display": "Hindi 🎶",
     "url": "zlJfJYVuyjpxWb5,FqsjKg__"
   }
 ]
