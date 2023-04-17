@@ -249,6 +249,9 @@
         }
 
         if (!context) {
+          // ios fix
+          window.AudioContext = window.AudioContext || window.webkitAudioContext
+          
           context = new AudioContext();
           source = context.createMediaElementSource(audio);
           analyser = context.createAnalyser();
