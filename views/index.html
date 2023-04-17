@@ -253,6 +253,7 @@
           window.AudioContext = window.AudioContext || window.webkitAudioContext
           
           context = new AudioContext();
+          context.resume().catch(console.error)
           source = context.createMediaElementSource(audio);
           analyser = context.createAnalyser();
           source.connect(analyser);
