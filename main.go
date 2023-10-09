@@ -3,9 +3,9 @@ package main
 import (
 	"encoding/json"
 	"html/template"
-	"io/ioutil"
 	"log"
 	"net/http"
+	"os"
 	"path/filepath"
 	"time"
 
@@ -17,7 +17,7 @@ import (
 
 func main() {
 
-	data, err := ioutil.ReadFile("playlist.json")
+	data, err := os.ReadFile("playlist.json")
 	if err != nil {
 		log.Fatalln(err)
 	}
