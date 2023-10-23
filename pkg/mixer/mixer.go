@@ -5,7 +5,6 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"log"
 	"math/rand"
 	"net/http"
@@ -37,6 +36,7 @@ type Mixer struct {
 	loading     bool
 	sample      *bytes.Buffer
 	ctx         context.Context
+	prefix      string
 }
 
 func New(r *radio.Radio, prefix string, playlistURL string) *Mixer {
@@ -54,6 +54,7 @@ func New(r *radio.Radio, prefix string, playlistURL string) *Mixer {
 		loading:     false,
 		sample:      &bytes.Buffer{},
 		ctx:         context.Background(),
+		prefix:      prefix,
 	}
 }
 
@@ -79,7 +80,6 @@ func (m *Mixer) Load() error {
 	}
 
 	songs := playlist.Songs
-	rand.Seed(time.Now().UnixNano())
 	rand.Shuffle(len(songs), func(i, j int) { songs[i], songs[j] = songs[j], songs[i] })
 	m.tracks = songs
 
@@ -109,7 +109,7 @@ func (m *Mixer) Stream() error {
 		return err
 	}
 
-	c, cancel := context.WithTimeout(m.ctx, time.Second*10)
+	c, cancel := context.WithTimeout(m.ctx, time.Second*20)
 	defer cancel()
 
 	req, err := http.NewRequestWithContext(c, http.MethodGet, downloadURL, nil)
@@ -121,13 +121,9 @@ func (m *Mixer) Stream() error {
 	if err != nil {
 		return err
 	}
+	defer resp.Body.Close()
 
-	b, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		return err
-	}
-
-	encoded, err := encoder.EncodeToMP3(b)
+	encoded, err := encoder.EncodeToMP3(m.prefix, resp.Body, c)
 	if err != nil {
 		return err
 	}

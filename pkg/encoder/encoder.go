@@ -2,14 +2,16 @@ package encoder
 
 import (
 	"bytes"
+	"context"
+	"io"
 	"os/exec"
 )
 
 // Encode to mp3 128kbps
-func EncodeToMP3(input []byte) ([]byte, error) {
+func EncodeToMP3(prefix string, input io.ReadCloser, ctx context.Context) ([]byte, error) {
 	out := &bytes.Buffer{}
 
-	cmd := exec.Command("ffmpeg",
+	cmd := exec.CommandContext(ctx, "ffmpeg",
 		"-i", "pipe:0",
 		"-map_metadata", "-1",
 		"-preset", "veryfast",
@@ -22,24 +24,10 @@ func EncodeToMP3(input []byte) ([]byte, error) {
 		"-vsync", "2",
 		"pipe:1",
 	)
+	cmd.Stdin = input
 	cmd.Stdout = out
 
-	stdin, err := cmd.StdinPipe()
-	if err != nil {
-		return nil, err
-	}
-
-	err = cmd.Start()
-	if err != nil {
-		return nil, err
-	}
-
-	_, err = stdin.Write(input)
-	if err != nil {
-		return nil, err
-	}
-
-	err = stdin.Close()
+	err := cmd.Start()
 	if err != nil {
 		return nil, err
 	}
